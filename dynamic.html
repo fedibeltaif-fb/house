@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>RentalPlatform - Dynamic</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a', 950: '#172554' }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Alpine.js for interactivity -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />
+    <style>body { font-family: 'Inter', sans-serif; } [x-cloak] { display: none !important; }</style>
+</head>
+<body class="h-full font-sans antialiased text-gray-900 bg-gray-50 flex flex-col" x-data="rentalApp()">
+    
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <!-- Logo -->
+                <div class="flex">
+                    <div class="shrink-0 flex items-center cursor-pointer" @click="view = 'home'">
+                        <span class="text-2xl font-bold text-primary-600 flex items-center gap-2">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                             RentalPlatform
+                        </span>
+                    </div>
+                </div>
+                <!-- Links -->
+                <div class="hidden sm:flex sm:items-center sm:ml-6 space-x-4">
+                     <button class="px-4 py-2 font-medium hover:text-primary-600" :class="view === 'home' ? 'text-primary-600' : 'text-gray-500'" @click="view = 'home'">Home</button>
+                     <button class="px-4 py-2 font-medium hover:text-primary-600" :class="view === 'listings' ? 'text-primary-600' : 'text-gray-500'" @click="fetchProperties(); view = 'listings'">Properties</button>
+                     
+                     <template x-if="!user">
+                        <button class="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 transition" @click="view = 'login'">Login</button>
+                     </template>
+                     
+                     <template x-if="user">
+                        <div class="relative group" @click.away="showUserMenu = false">
+                             <button @click="showUserMenu = !showUserMenu" class="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 focus:outline-none">
+                                <span x-text="user.name"></span>
+                                <div class="w-8 h-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold" x-text="user.name.charAt(0)"></div>
+                             </button>
+                             <!-- Dropdown -->
+                             <div x-show="showUserMenu" x-cloak class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 ring-1 ring-black ring-opacity-5">
+                                 <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Dashboard</a>
+                                 <button @click="logout()" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Sign out</button>
+                             </div>
+                        </div>
+                     </template>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow">
+        
+        <!-- HOME VIEW -->
+        <div x-show="view === 'home'" x-transition.opacity>
+            <!-- Hero -->
+            <div class="relative bg-gray-900 overflow-hidden">
+                <div class="absolute inset-0">
+                    <img src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1920&q=80" class="w-full h-full object-cover opacity-40">
+                    <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/40"></div>
+                </div>
+                <div class="relative max-w-7xl mx-auto py-24 px-4 text-center text-white">
+                    <h1 class="text-4xl font-extrabold sm:text-6xl mb-6">Find your dream home</h1>
+                    <p class="text-xl text-gray-300 max-w-3xl mx-auto mb-10">Live API Data. Real-time Search. Instant connection.</p>
+                    
+                    <!-- Search Box -->
+                    <div class="w-full max-w-4xl mx-auto bg-white rounded-lg shadow-xl p-6 text-left">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div class="md:col-span-2">
+                                <label class="text-xs font-bold text-gray-500 uppercase">Location</label>
+                                <input type="text" x-model="search.city" placeholder="City name (e.g. New York)" class="w-full p-2 border rounded-lg text-gray-900">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase">Type</label>
+                                <select x-model="search.type" class="w-full p-2 border rounded-lg text-gray-900 bg-white">
+                                    <option value="">Any Type</option>
+                                    <option value="apartment">Apartment</option>
+                                    <option value="house">House</option>
+                                    <option value="studio">Studio</option>
+                                </select>
+                            </div>
+                            <div class="flex items-end">
+                                <button @click="performSearch()" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Search</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Featured -->
+            <div class="max-w-7xl mx-auto px-4 py-16">
+                <h2 class="text-3xl font-bold text-gray-900 mb-8">Featured Properties</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <template x-for="property in featuredProperties" :key="property.id">
+                        <div class="bg-white rounded-xl shadow-sm border overflow-hidden cursor-pointer hover:shadow-lg transition" @click="openProperty(property)">
+                            <div class="h-48 bg-gray-200">
+                                <img :src="property.image" class="w-full h-full object-cover">
+                            </div>
+                            <div class="p-4">
+                                <h3 class="font-bold text-lg" x-text="property.title"></h3>
+                                <p class="text-gray-500 text-sm" x-text="property.city"></p>
+                                <div class="mt-4 flex justify-between items-center">
+                                    <span class="text-xl font-bold text-primary-600" x-text="'$' + property.price"></span>
+                                    <span class="text-sm text-primary-600">View Details →</span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- LOGIN VIEW -->
+        <div x-show="view === 'login'" x-cloak class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+            <div class="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-lg">
+                <div class="text-center">
+                    <h2 class="mt-6 text-3xl font-extrabold text-gray-900">Sign in to your account</h2>
+                    <p class="mt-2 text-sm text-gray-600">
+                        Or <a href="#" class="font-medium text-primary-600 hover:text-primary-500">start your 14-day free trial</a>
+                    </p>
+                </div>
+                
+                <div x-show="loginError" class="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded text-sm text-center" x-text="loginError"></div>
+
+                <form class="mt-8 space-y-6" @submit.prevent="performLogin()">
+                    <input type="hidden" name="remember" value="true">
+                    <div class="rounded-md shadow-sm -space-y-px">
+                        <div>
+                            <label for="email-address" class="sr-only">Email address</label>
+                            <input x-model="loginForm.email" id="email-address" name="email" type="email" autocomplete="email" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm" placeholder="Email address (user@example.com)">
+                        </div>
+                        <div>
+                            <label for="password" class="sr-only">Password</label>
+                            <input x-model="loginForm.password" id="password" name="password" type="password" autocomplete="current-password" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm" placeholder="Password (password)">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <input id="remember-me" name="remember-me" type="checkbox" class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded">
+                            <label for="remember-me" class="ml-2 block text-sm text-gray-900">Remember me</label>
+                        </div>
+
+                        <div class="text-sm">
+                            <a href="#" class="font-medium text-primary-600 hover:text-primary-500">Forgot your password?</a>
+                        </div>
+                    </div>
+
+                    <div>
+                        <button type="submit" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition" :class="{'opacity-75 cursor-wait': loading}">
+                            <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                                <svg class="h-5 w-5 text-primary-500 group-hover:text-primary-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                            <span x-text="loading ? 'Signing in...' : 'Sign in'"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- LISTINGS VIEW -->
+        <div x-show="view === 'listings'" x-cloak class="max-w-7xl mx-auto px-4 py-8">
+            <h1 class="text-3xl font-bold mb-6">Search Results</h1>
+            <div class="mb-4 flex gap-4">
+                <input type="text" x-model="search.city" @keyup.enter="performSearch()" placeholder="Filter by city..." class="border p-2 rounded">
+                <button @click="performSearch()" class="bg-primary-600 text-white px-4 py-2 rounded">Refresh</button>
+            </div>
+            
+            <div x-show="loading" class="text-center py-12">Loading...</div>
+            
+            <div x-show="!loading" class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <template x-for="property in properties" :key="property.id">
+                    <div class="bg-white rounded-xl shadow-sm border overflow-hidden cursor-pointer hover:shadow-lg transition" @click="openProperty(property)">
+                         <div class="h-48 bg-gray-200 relative">
+                            <span class="absolute top-2 left-2 bg-white px-2 py-1 text-xs font-bold rounded" x-text="property.type"></span>
+                            <img :src="property.image" class="w-full h-full object-cover">
+                        </div>
+                        <div class="p-4">
+                            <div class="flex justify-between">
+                                <h3 class="font-bold text-lg" x-text="property.title"></h3>
+                                <span class="font-bold text-primary-600" x-text="'$' + property.price"></span>
+                            </div>
+                            <p class="text-gray-500 text-sm mb-2" x-text="property.address + ', ' + property.city"></p>
+                            <div class="flex gap-4 text-sm text-gray-600">
+                                <span x-text="property.bedrooms + ' Beds'"></span>
+                                <span x-text="property.bathrooms + ' Baths'"></span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- DETAILS MODAL -->
+        <div x-show="selectedProperty" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-75 flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" @click.away="selectedProperty = null">
+                <div x-show="selectedProperty" class="relative">
+                    <button @click="selectedProperty = null" class="absolute top-4 right-4 bg-white rounded-full p-2 shadow z-10">✕</button>
+                    <div class="h-64 md:h-80 bg-gray-200">
+                        <img :src="selectedProperty?.image" class="w-full h-full object-cover">
+                    </div>
+                    <div class="p-8">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h2 class="text-3xl font-bold" x-text="selectedProperty?.title"></h2>
+                                <p class="text-lg text-gray-600" x-text="selectedProperty?.city"></p>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-3xl font-bold text-primary-600" x-text="'$' + selectedProperty?.price"></div>
+                                <div class="text-gray-500">/month</div>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-4 border-y py-4 mb-6">
+                            <div class="text-center">
+                                <div class="font-bold text-xl" x-text="selectedProperty?.bedrooms"></div>
+                                <div class="text-sm text-gray-500">Bedrooms</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="font-bold text-xl" x-text="selectedProperty?.bathrooms"></div>
+                                <div class="text-sm text-gray-500">Bathrooms</div>
+                            </div>
+                             <div class="text-center">
+                                <div class="font-bold text-xl" x-text="selectedProperty?.area"></div>
+                                <div class="text-sm text-gray-500">Sq Ft</div>
+                            </div>
+                        </div>
+                        
+                        <button class="w-full bg-primary-600 text-white font-bold py-3 rounded-lg hover:bg-primary-700">Contact Landlord</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        function rentalApp() {
+            return {
+                view: 'home',
+                loading: false,
+                search: { city: '', type: '' },
+                properties: [],
+                featuredProperties: [],
+                selectedProperty: null,
+                
+                // Auth State
+                user: null,
+                showUserMenu: false,
+                loginForm: { email: 'user@example.com', password: 'password' },
+                loginError: '',
+
+                init() {
+                    // Check local storage for user
+                    const savedUser = localStorage.getItem('rental_user');
+                    if (savedUser) {
+                        this.user = JSON.parse(savedUser);
+                    }
+
+                    // Load featured properties on init
+                    fetch('/api/properties')
+                        .then(res => res.json())
+                        .then(data => {
+                            this.properties = data;
+                            this.featuredProperties = data.filter(p => p.is_featured).slice(0, 3);
+                        });
+                },
+                
+                performLogin() {
+                    this.loading = true;
+                    this.loginError = '';
+                    
+                    fetch('/api/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(this.loginForm)
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        this.loading = false;
+                        if (data.success) {
+                            this.user = data.user;
+                            localStorage.setItem('rental_user', JSON.stringify(data.user));
+                            localStorage.setItem('rental_token', data.token);
+                            this.view = 'home';
+                        } else {
+                            this.loginError = data.error || 'Login failed';
+                        }
+                    })
+                    .catch(err => {
+                        this.loading = false;
+                        this.loginError = 'An unexpected error occurred';
+                    });
+                },
+                
+                logout() {
+                    this.user = null;
+                    this.showUserMenu = false;
+                    localStorage.removeItem('rental_user');
+                    localStorage.removeItem('rental_token');
+                    this.view = 'home';
+                },
+
+                fetchProperties() {
+                    this.loading = true;
+                    const params = new URLSearchParams();
+                    if (this.search.city) params.append('city', this.search.city);
+                    if (this.search.type) params.append('type', this.search.type);
+
+                    fetch(`/api/properties?${params.toString()}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            this.properties = data;
+                            this.loading = false;
+                        });
+                },
+
+                performSearch() {
+                    this.view = 'listings';
+                    this.fetchProperties();
+                },
+
+                openProperty(property) {
+                    this.selectedProperty = property;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
